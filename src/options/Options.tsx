@@ -38,17 +38,15 @@ const Options: React.FC = () => {
       ...settings,
       groupName: settings.groupName.trim() || DEFAULT_SETTINGS.groupName,
     };
-    chrome.storage.sync.set(finalSettings, () => {
-      setSettings(finalSettings);
-      showStatus('Settings saved');
-    });
+    chrome.storage.sync.set(finalSettings);
+    setSettings(finalSettings);
+    showStatus('Settings saved');
   };
 
   const resetSettings = () => {
-    chrome.storage.sync.set(DEFAULT_SETTINGS, () => {
-      setSettings(DEFAULT_SETTINGS);
-      showStatus('Settings reset to default');
-    });
+    chrome.storage.sync.set(DEFAULT_SETTINGS);
+    setSettings(DEFAULT_SETTINGS);
+    showStatus('Settings reset to default');
   };
 
   return (

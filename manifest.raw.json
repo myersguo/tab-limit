@@ -25,9 +25,10 @@
     "service_worker": "background.js"
   },
   
-  "options_page": "src/options/index.html",
+  "options_page": "options.html",
+  
   "action": {
-    "default_popup": "src/popup/index.html",
+    "default_popup": "popup.html",
     "default_title": "Tab Limit Settings"
   },
   

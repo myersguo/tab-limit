@@ -15,12 +15,25 @@ const DEFAULT_SETTINGS: Settings = {
   groupName: 'Others Group'
 };
 
+let config: Settings = DEFAULT_SETTINGS;
+
+// Function to load/reload settings into the global config variable
+const loadConfig = async () => {
+  const storedSettings = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
+  config = { ...DEFAULT_SETTINGS, ...storedSettings };
+};
+
 // --- Event Listeners ---
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const result = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
-  const settings = { ...DEFAULT_SETTINGS, ...result };
-  await chrome.storage.sync.set(settings);
+  await loadConfig();
+});
+
+// Listen for changes in storage and reload the config
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync') {
+    loadConfig();
+  }
 });
 
 chrome.tabs.onCreated.addListener(async (tab) => {
@@ -32,7 +45,6 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     });
   }
   if (tab.windowId) {
-    // Pass the newly created tab to handleTabLimit to avoid race conditions
     await handleTabLimit(tab.windowId, tab);
   }
 });
@@ -51,12 +63,8 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 // --- Core Logic ---
 
 async function handleTabLimit(windowId: number, newTab?: chrome.tabs.Tab) {
-  const settings: Settings = (await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS))) as Settings;
-  const config = { ...DEFAULT_SETTINGS, ...settings };
-
   let allTabs = await chrome.tabs.query({ windowId });
 
-  // Ensure the newly created tab is in the list, countering potential race conditions.
   if (newTab && !allTabs.some(t => t.id === newTab.id)) {
     allTabs.push(newTab);
   }
@@ -64,7 +72,6 @@ async function handleTabLimit(windowId: number, newTab?: chrome.tabs.Tab) {
   const optionsUrl = chrome.runtime.getURL("src/options/index.html");
   const filteredTabs = allTabs.filter(tab => tab.url !== optionsUrl);
   const ungroupedTabs = filteredTabs.filter(tab => tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE);
-
 
   if (ungroupedTabs.length > config.maxTabs) {
     if (config.exceedBehavior === 'prevent') {
@@ -172,3 +179,6 @@ async function sortTabsByRecentUse(tabs: chrome.tabs.Tab[], ascending: boolean):
   }));
   return tabsWithTime.sort((a, b) => ascending ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
 }
+
+// Initial load of the configuration
+loadConfig();
