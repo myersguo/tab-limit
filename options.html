@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Tab Limit Settings</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <h1>Tab Limit Settings</h1>
+
+    <div class="section">
+      <h2>Basic Settings</h2>
+
+      <div class="field">
+        <label for="maxTabs">Maximum number of tabs:</label>
+        <input type="number" id="maxTabs" min="1" max="50" value="5">
+      </div>
+
+      <div class="field">
+        <label for="exceedBehavior">When limit is exceeded:</label>
+        <select id="exceedBehavior">
+          <option value="group">Move to group</option>
+          <option value="prevent">Prevent creation</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section" id="groupSettings">
+      <h2>Group Settings</h2>
+
+      <div class="field">
+        <label for="groupStrategy">
+          Which tabs to move to group:
+          <span class="tooltip">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-text">Choose which tabs should be moved to the group when the limit is exceeded</span>
+          </span>
+        </label>
+        <select id="groupStrategy">
+          <option value="creation-asc">Oldest tabs first (by creation time)</option>
+          <option value="creation-desc">Newest tabs first (by creation time)</option>
+          <option value="recent-asc">Least recently used tabs first</option>
+          <option value="recent-desc">Most recently used tabs first</option>
+        </select>
+        <div class="field-help">
+          <strong>Oldest first:</strong> Tabs created earlier are moved to group first<br>
+          <strong>Newest first:</strong> Tabs created recently are moved to group first<br>
+          <strong>Least recently used:</strong> Tabs not used for a long time are moved first<br>
+          <strong>Most recently used:</strong> Tabs used recently are moved first
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="restoreStrategy">
+          When tabs are below limit:
+          <span class="tooltip">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-text">Choose what happens when the number of tabs falls below the limit</span>
+          </span>
+        </label>
+        <select id="restoreStrategy">
+          <option value="none">Do nothing (default)</option>
+          <option value="restore">Restore tabs from group</option>
+        </select>
+        <div class="field-help">
+          <strong>Do nothing:</strong> Tabs remain in the group even when below limit<br>
+          <strong>Restore:</strong> Automatically move tabs back from group using the reverse of grouping strategy
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="groupName">Group name:</label>
+        <input type="text" id="groupName" value="Others Group" maxlength="50">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="save">Save Settings</button>
+      <button id="reset">Reset to Default</button>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Limit",
+  "version": "1.0",
+  "description": "This feature allows you to limit the number of tabs that can be open simultaneously",
+  
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "storage",
+    "activeTab",
+    "notifications"
+  ],
+  
+  "commands": {
+    "new-tab": {
+      "suggested_key": {
+        "default": "Ctrl+T"
+      },
+      "description": "create new tab"
+    }
+  },
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "options_page": "options.html",
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tab Limit Settings"
+  },
+  
+  "icons": {
+    "16": "16.png",
+    "24": "24.png",
+    "32": "32.png",
+    "48": "48.png",
+    "128": "128.png"
+  }
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Tab Limit</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="popup-container">
+    <h3>Tab Limit</h3>
+    
+    <div class="popup-content">
+      <div class="info-item">
+        <span class="label">Current tabs:</span>
+        <span id="currentTabs" class="value">-</span>
+      </div>
+      
+      <div class="info-item">
+        <span class="label">Tab limit:</span>
+        <span id="maxTabs" class="value">-</span>
+      </div>
+      
+      <div class="info-item">
+        <span class="label">Exceed behavior:</span>
+        <span id="exceedBehavior" class="value">-</span>
+      </div>
+    </div>
+    
+    <div class="popup-actions">
+      <button id="openOptions">Open Settings</button>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
