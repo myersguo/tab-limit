@@ -5,7 +5,7 @@ const DEFAULT_SETTINGS = {
   maxTabs: 5,
   exceedBehavior: 'group',
   groupStrategy: 'recent-asc',
-  restoreStrategy: 'none',
+  restoreStrategy: 'restore',
   groupName: 'Others Group'
 };
 

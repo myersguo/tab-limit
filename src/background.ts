@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS: Settings = {
   maxTabs: 5,
   exceedBehavior: 'group',
   groupStrategy: 'recent-asc',
-  restoreStrategy: 'none',
+  restoreStrategy: 'restore',
   groupName: 'Others Group'
 };
 
@@ -142,15 +142,22 @@ async function handleRestoreFromGroup(ungroupedTabs: chrome.tabs.Tab[], config: 
 
   let tabsToRestore: chrome.tabs.Tab[];
   
-  const sortOrderIsAsc = config.groupStrategy.endsWith('-asc');
   switch (config.groupStrategy) {
     case 'creation-asc':
+      // If grouped by creation time ascending (oldest first), restore the newest tabs from the group.
+      tabsToRestore = (await sortTabsByCreationTime(groupedTabs, false)).slice(0, availableSlots);
+      break;
     case 'creation-desc':
-      tabsToRestore = (await sortTabsByCreationTime(groupedTabs, !sortOrderIsAsc)).slice(0, availableSlots);
+      // If grouped by creation time descending (newest first), restore the oldest tabs from the group.
+      tabsToRestore = (await sortTabsByCreationTime(groupedTabs, true)).slice(0, availableSlots);
       break;
     case 'recent-asc':
+      // If grouped by least recent use, restore the most recently used tabs from the group.
+      tabsToRestore = (await sortTabsByRecentUse(groupedTabs, false)).slice(0, availableSlots);
+      break;
     case 'recent-desc':
-      tabsToRestore = (await sortTabsByRecentUse(groupedTabs, !sortOrderIsAsc)).slice(0, availableSlots);
+      // If grouped by most recent use, restore the least recently used tabs from the group.
+      tabsToRestore = (await sortTabsByRecentUse(groupedTabs, true)).slice(0, availableSlots);
       break;
   }
   
