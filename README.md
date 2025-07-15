@@ -1,5 +1,9 @@
 # Tab Limit Chrome Extension
 
+<img width="602" height="430" alt="image" src="https://github.com/user-attachments/assets/a37dde56-8b61-49e8-8942-3277afc46178" />
+<img width="602" height="1516" alt="image" src="https://github.com/user-attachments/assets/454258c6-ad55-4265-ad13-0380ee99241a" />
+
+
 ## English
 
 Tab Limit is a Chrome extension that helps you manage the number of open tabs in your browser window. You can set a maximum number of tabs, and choose what happens when the limit is exceeded: either prevent new tabs from opening or automatically group excess tabs.
