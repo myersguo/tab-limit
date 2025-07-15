@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { DEFAULT_SETTINGS } from '../config';
 import '../styles.css';
-
-const DEFAULT_SETTINGS = {
-  maxTabs: 5,
-  exceedBehavior: 'group',
-  groupStrategy: 'recent-asc',
-  restoreStrategy: 'restore',
-  groupName: 'Others Group'
-};
 
 const Options: React.FC = () => {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);

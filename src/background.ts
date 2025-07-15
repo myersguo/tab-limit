@@ -1,19 +1,4 @@
-// Define types for settings
-interface Settings {
-  maxTabs: number;
-  exceedBehavior: 'group' | 'prevent';
-  groupStrategy: 'creation-asc' | 'creation-desc' | 'recent-asc' | 'recent-desc';
-  restoreStrategy: 'none' | 'restore';
-  groupName: string;
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  maxTabs: 5,
-  exceedBehavior: 'group',
-  groupStrategy: 'recent-asc',
-  restoreStrategy: 'restore',
-  groupName: 'Others Group'
-};
+import { Settings, DEFAULT_SETTINGS } from './config';
 
 let config: Settings = DEFAULT_SETTINGS;
 
