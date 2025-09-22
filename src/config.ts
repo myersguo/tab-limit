@@ -1,4 +1,3 @@
-
 // Define types for settings
 export interface Settings {
   maxTabs: number;
@@ -6,12 +5,16 @@ export interface Settings {
   groupStrategy: 'creation-asc' | 'creation-desc' | 'recent-asc' | 'recent-desc';
   restoreStrategy: 'none' | 'restore';
   groupName: string;
+  keepSingleUrl: boolean; // New option
+  keepUrlHash: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  maxTabs: 10,
-  exceedBehavior: 'group',
+  maxTabs: 20,
+  exceedBehavior: 'prevent',
   groupStrategy: 'recent-asc',
   restoreStrategy: 'restore',
-  groupName: 'Others Group'
+  groupName: 'Others Group',
+  keepSingleUrl: true, // Default to enabled
+  keepUrlHash: true,
 };

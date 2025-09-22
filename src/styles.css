@@ -266,3 +266,41 @@ button:hover {
 .field-help strong {
   color: #1a73e8;
 }
+
+
+/* Add these checkbox-specific styles */
+.checkbox-field {
+  margin-bottom: 20px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 500;
+  color: #5f6368;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  margin-left: 8px;
+  flex: 1;
+}
+
+.sub-field {
+  margin-left: 25px;
+}
+
+.field-help {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.checkbox-label:hover input[type="checkbox"] {
+  border-color: #1a73e8;
+}

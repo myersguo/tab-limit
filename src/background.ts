@@ -29,8 +29,21 @@ chrome.tabs.onCreated.addListener(async (tab) => {
       [`tab_${tab.id}_lastUsed`]: timestamp
     });
   }
+  
+  // Handle duplicate URL removal if enabled
+  if (config.keepSingleUrl && tab.windowId && tab.url) {
+    await handleDuplicateUrls(tab.windowId, tab);
+  }
+  
   if (tab.windowId) {
     await handleTabLimit(tab.windowId, tab);
+  }
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // Check for duplicate URLs when a tab's URL changes
+  if (config.keepSingleUrl && changeInfo.url && tab.windowId) {
+    await handleDuplicateUrls(tab.windowId, tab);
   }
 });
 
@@ -46,6 +59,71 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 });
 
 // --- Core Logic ---
+
+async function handleDuplicateUrls(windowId: number, currentTab: chrome.tabs.Tab) {
+  if (!currentTab.url || !currentTab.id) return;
+  
+  // Skip special URLs
+  if (currentTab.url.startsWith('chrome://') || 
+      currentTab.url.startsWith('chrome-extension://') ||
+      currentTab.url === 'about:blank' ||
+      currentTab.url === 'about:newtab') {
+    return;
+  }
+  
+  const normalizeUrl = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      // By default, keep hash. If keepUrlHash is false, remove it.
+      if (!config.keepUrlHash) {
+        return urlObj.origin + urlObj.pathname + urlObj.search;
+      }
+      return urlObj.href;
+    } catch {
+      return url;
+    }
+  };
+
+  const normalizedCurrentUrl = normalizeUrl(currentTab.url);
+  const allTabs = await chrome.tabs.query({ windowId });
+  
+  // Find duplicate tabs with the same URL
+  const duplicateTabs = allTabs.filter(tab => 
+    tab.id !== currentTab.id && 
+    tab.url && 
+    normalizeUrl(tab.url) === normalizedCurrentUrl
+  );
+  
+  if (duplicateTabs.length > 0) {
+    // Sort duplicate tabs by creation time (keep the oldest)
+    const tabsWithTime = await Promise.all([currentTab, ...duplicateTabs].map(async (tab) => {
+      const key = `tab_${tab.id}_created`;
+      const result = await chrome.storage.local.get(key);
+      return { 
+        tab, 
+        timestamp: result[key] || tab.id || Date.now() 
+      };
+    }));
+    
+    // Sort by timestamp (oldest first)
+    tabsWithTime.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Keep the first (oldest) tab and close the rest
+    const tabsToClose = tabsWithTime.slice(1).map(item => item.tab.id).filter((id): id is number => id !== undefined);
+    
+    if (tabsToClose.length > 0) {
+      await chrome.tabs.remove(tabsToClose);
+      
+      // If the current tab was closed, activate the kept tab
+      if (tabsToClose.includes(currentTab.id)) {
+        const keptTab = tabsWithTime[0].tab;
+        if (keptTab.id) {
+          await chrome.tabs.update(keptTab.id, { active: true });
+        }
+      }
+    }
+  }
+}
 
 async function handleTabLimit(windowId: number, newTab?: chrome.tabs.Tab) {
   let allTabs = await chrome.tabs.query({ windowId });
@@ -99,6 +177,8 @@ async function handleGroupExcess(tabs: chrome.tabs.Tab[], config: Settings, wind
     case 'recent-desc':
       tabsToGroup = (await sortTabsByRecentUse(tabs, false)).slice(0, excessCount);
       break;
+    default:
+      tabsToGroup = (await sortTabsByRecentUse(tabs, true)).slice(0, excessCount);
   }
 
   const tabIdsToGroup = tabsToGroup.map(t => t.id).filter((id): id is number => id !== undefined);
@@ -144,6 +224,8 @@ async function handleRestoreFromGroup(ungroupedTabs: chrome.tabs.Tab[], config: 
       // If grouped by most recent use, restore the least recently used tabs from the group.
       tabsToRestore = (await sortTabsByRecentUse(groupedTabs, true)).slice(0, availableSlots);
       break;
+    default:
+      tabsToRestore = (await sortTabsByRecentUse(groupedTabs, false)).slice(0, availableSlots);
   }
   
   const tabIds = tabsToRestore.map(tab => tab.id).filter((id): id is number => id !== undefined);

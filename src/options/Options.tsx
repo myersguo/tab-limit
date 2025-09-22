@@ -13,8 +13,13 @@ const Options: React.FC = () => {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setSettings(prev => ({ ...prev, [name]: name === 'maxTabs' ? parseInt(value, 10) : value }));
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setSettings(prev => ({ ...prev, [name]: checked }));
+    } else {
+      setSettings(prev => ({ ...prev, [name]: name === 'maxTabs' ? parseInt(value, 10) : value }));
+    }
   };
 
   const showStatus = (message: string, type: string = 'success') => {
@@ -72,6 +77,38 @@ const Options: React.FC = () => {
             <option value="prevent">Prevent creation</option>
           </select>
         </div>
+        <div className="field checkbox-field">
+          <label htmlFor="keepSingleUrl" className="checkbox-label">
+            <input
+              type="checkbox"
+              id="keepSingleUrl"
+              name="keepSingleUrl"
+              checked={settings.keepSingleUrl}
+              onChange={handleInputChange}
+            />
+            <span>Keep only one tab per URL</span>
+          </label>
+          <div className="field-help">
+            When enabled, automatically closes duplicate tabs with the same URL, keeping only the oldest one.
+          </div>
+        </div>
+        {settings.keepSingleUrl && (
+          <div className="field checkbox-field sub-field">
+            <label htmlFor="keepUrlHash" className="checkbox-label">
+              <input
+                type="checkbox"
+                id="keepUrlHash"
+                name="keepUrlHash"
+                checked={settings.keepUrlHash}
+                onChange={handleInputChange}
+              />
+              <span>Keep URL hash (e.g., #section)</span>
+            </label>
+            <div className="field-help">
+              When checked, tabs with the same URL but different hashes are considered unique.
+            </div>
+          </div>
+        )}
       </div>
 
       {settings.exceedBehavior === 'group' && (
