@@ -18,7 +18,7 @@ const Options: React.FC = () => {
       const checked = (e.target as HTMLInputElement).checked;
       setSettings(prev => ({ ...prev, [name]: checked }));
     } else {
-      setSettings(prev => ({ ...prev, [name]: name === 'maxTabs' ? parseInt(value, 10) : value }));
+      setSettings(prev => ({ ...prev, [name]: (name === 'maxTabs' || name === 'tabsPerUrl') ? parseInt(value, 10) : value }));
     }
   };
 
@@ -30,6 +30,10 @@ const Options: React.FC = () => {
   const saveSettings = () => {
     if (settings.maxTabs < 1 || settings.maxTabs > 50) {
       showStatus('Tab count must be between 1-50', 'error');
+      return;
+    }
+    if (settings.tabsPerUrl < 1 || settings.tabsPerUrl > 10) {
+      showStatus('Tabs per URL must be between 1-10', 'error');
       return;
     }
     const finalSettings = {
@@ -86,28 +90,42 @@ const Options: React.FC = () => {
               checked={settings.keepSingleUrl}
               onChange={handleInputChange}
             />
-            <span>Keep only one tab per URL</span>
+            <span>Limit tabs per URL</span>
           </label>
           <div className="field-help">
-            When enabled, automatically closes duplicate tabs with the same URL, keeping only the oldest one.
+            When enabled, automatically closes duplicate tabs with the same URL.
           </div>
         </div>
         {settings.keepSingleUrl && (
-          <div className="field checkbox-field sub-field">
-            <label htmlFor="keepUrlHash" className="checkbox-label">
+          <>
+            <div className="field sub-field">
+              <label htmlFor="tabsPerUrl">Tabs to keep per URL:</label>
               <input
-                type="checkbox"
-                id="keepUrlHash"
-                name="keepUrlHash"
-                checked={settings.keepUrlHash}
+                type="number"
+                id="tabsPerUrl"
+                name="tabsPerUrl"
+                min="1"
+                max="10"
+                value={settings.tabsPerUrl}
                 onChange={handleInputChange}
               />
-              <span>Keep URL hash (e.g., #section)</span>
-            </label>
-            <div className="field-help">
-              When checked, tabs with the same URL but different hashes are considered unique.
             </div>
-          </div>
+            <div className="field checkbox-field sub-field">
+              <label htmlFor="keepUrlHash" className="checkbox-label">
+                <input
+                  type="checkbox"
+                  id="keepUrlHash"
+                  name="keepUrlHash"
+                  checked={settings.keepUrlHash}
+                  onChange={handleInputChange}
+                />
+                <span>Keep URL hash (e.g., #section)</span>
+              </label>
+              <div className="field-help">
+                When checked, tabs with the same URL but different hashes are considered unique.
+              </div>
+            </div>
+          </>
         )}
       </div>
 

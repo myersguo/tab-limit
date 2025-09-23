@@ -62,7 +62,7 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 
 async function handleDuplicateUrls(windowId: number, currentTab: chrome.tabs.Tab) {
   if (!currentTab.url || !currentTab.id) return;
-  
+
   // Skip special URLs
   if (currentTab.url.startsWith('chrome://') || 
       currentTab.url.startsWith('chrome-extension://') ||
@@ -70,7 +70,7 @@ async function handleDuplicateUrls(windowId: number, currentTab: chrome.tabs.Tab
       currentTab.url === 'about:newtab') {
     return;
   }
-  
+
   const normalizeUrl = (url: string) => {
     try {
       const urlObj = new URL(url);
@@ -86,36 +86,38 @@ async function handleDuplicateUrls(windowId: number, currentTab: chrome.tabs.Tab
 
   const normalizedCurrentUrl = normalizeUrl(currentTab.url);
   const allTabs = await chrome.tabs.query({ windowId });
-  
-  // Find duplicate tabs with the same URL
-  const duplicateTabs = allTabs.filter(tab => 
-    tab.id !== currentTab.id && 
-    tab.url && 
-    normalizeUrl(tab.url) === normalizedCurrentUrl
+
+  // Find all tabs with the same normalized URL
+  const matchingTabs = allTabs.filter(tab =>
+    tab.url && normalizeUrl(tab.url) === normalizedCurrentUrl
   );
-  
-  if (duplicateTabs.length > 0) {
-    // Sort duplicate tabs by creation time (keep the oldest)
-    const tabsWithTime = await Promise.all([currentTab, ...duplicateTabs].map(async (tab) => {
+
+  if (matchingTabs.length > config.tabsPerUrl) {
+    // Sort tabs by creation time (oldest first)
+    const tabsWithTime = await Promise.all(matchingTabs.map(async (tab) => {
       const key = `tab_${tab.id}_created`;
       const result = await chrome.storage.local.get(key);
-      return { 
-        tab, 
-        timestamp: result[key] || tab.id || Date.now() 
+      return {
+        tab,
+        timestamp: result[key] || tab.id || Date.now()
       };
     }));
-    
+
     // Sort by timestamp (oldest first)
     tabsWithTime.sort((a, b) => a.timestamp - b.timestamp);
-    
-    // Keep the first (oldest) tab and close the rest
-    const tabsToClose = tabsWithTime.slice(1).map(item => item.tab.id).filter((id): id is number => id !== undefined);
-    
+
+    // Keep the oldest 'tabsPerUrl' tabs and close the rest
+    const tabsToClose = tabsWithTime.slice(config.tabsPerUrl).map(item => item.tab.id).filter((id): id is number => id !== undefined);
+
     if (tabsToClose.length > 0) {
+      // Check if the current tab is one of those to be closed
+      const currentTabIsClosing = tabsToClose.includes(currentTab.id!);
+
       await chrome.tabs.remove(tabsToClose);
-      
-      // If the current tab was closed, activate the kept tab
-      if (tabsToClose.includes(currentTab.id)) {
+
+      // If the current tab was closed, we need to decide which tab to activate.
+      // Let's activate the oldest tab that was kept.
+      if (currentTabIsClosing) {
         const keptTab = tabsWithTime[0].tab;
         if (keptTab.id) {
           await chrome.tabs.update(keptTab.id, { active: true });

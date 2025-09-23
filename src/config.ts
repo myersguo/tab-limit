@@ -5,7 +5,8 @@ export interface Settings {
   groupStrategy: 'creation-asc' | 'creation-desc' | 'recent-asc' | 'recent-desc';
   restoreStrategy: 'none' | 'restore';
   groupName: string;
-  keepSingleUrl: boolean; // New option
+  keepSingleUrl: boolean;
+  tabsPerUrl: number;
   keepUrlHash: boolean;
 }
 
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   groupStrategy: 'recent-asc',
   restoreStrategy: 'restore',
   groupName: 'Others Group',
-  keepSingleUrl: true, // Default to enabled
+  keepSingleUrl: true,
+  tabsPerUrl: 2,
   keepUrlHash: true,
 };
