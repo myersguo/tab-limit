@@ -27,6 +27,12 @@ interface ConfirmAction {
   run: () => Promise<void>;
 }
 
+interface QuickShortcut {
+  id: string;
+  title: string;
+  url: string;
+}
+
 type WindowFilter = 'all' | number;
 
 interface WindowOption {
@@ -102,6 +108,30 @@ const sortByLatestCreated = (tabs: OverviewTab[]) =>
   });
 
 const PREVIEW_TABS_PER_GROUP = 5;
+const QUICK_SHORTCUTS_STORAGE_KEY = 'quickLaunchShortcuts';
+
+const makeShortcutId = () => `shortcut_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+const normalizeShortcuts = (value: unknown): QuickShortcut[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item): QuickShortcut[] => {
+    if (!item || typeof item !== 'object') return [];
+    const candidate = item as Partial<QuickShortcut>;
+    const title = typeof candidate.title === 'string' ? candidate.title.trim() : '';
+    const url = typeof candidate.url === 'string' ? candidate.url.trim() : '';
+    if (!title || !url) return [];
+
+    return [{
+      id: typeof candidate.id === 'string' && candidate.id ? candidate.id : makeShortcutId(),
+      title,
+      url,
+    }];
+  });
+};
+
+const getShortcutFallbackLabel = (shortcut: QuickShortcut) =>
+  (shortcut.title || shortcut.url).trim().slice(0, 1).toUpperCase() || '?';
 
 const NewTab: React.FC = () => {
   const [tabs, setTabs] = useState<OverviewTab[]>([]);
@@ -112,6 +142,9 @@ const NewTab: React.FC = () => {
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
   const [selectedWindow, setSelectedWindow] = useState<WindowFilter>('all');
   const [windowOptions, setWindowOptions] = useState<WindowOption[]>([]);
+  const [quickShortcuts, setQuickShortcuts] = useState<QuickShortcut[]>([]);
+  const [shortcutDrafts, setShortcutDrafts] = useState<QuickShortcut[]>([]);
+  const [shortcutEditorOpen, setShortcutEditorOpen] = useState(false);
 
   const loadTabs = async () => {
     setLoading(true);
@@ -200,6 +233,15 @@ const NewTab: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const loadShortcuts = async () => {
+      const data = await chrome.storage.local.get(QUICK_SHORTCUTS_STORAGE_KEY);
+      setQuickShortcuts(normalizeShortcuts(data[QUICK_SHORTCUTS_STORAGE_KEY]));
+    };
+
+    loadShortcuts();
+  }, []);
+
   const windowFilteredTabs = useMemo(() => {
     if (selectedWindow === 'all') return tabs;
     return tabs.filter(tab => tab.windowId === selectedWindow);
@@ -220,6 +262,15 @@ const NewTab: React.FC = () => {
       return haystack.includes(normalizedQuery);
     });
   }, [query, windowFilteredTabs]);
+
+  const filteredShortcuts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return quickShortcuts;
+
+    return quickShortcuts.filter(shortcut =>
+      `${shortcut.title} ${shortcut.url}`.toLowerCase().includes(normalizedQuery)
+    );
+  }, [query, quickShortcuts]);
 
   const groups = useMemo(() => {
     const byDomain = new Map<string, OverviewTab[]>();
@@ -269,6 +320,8 @@ const NewTab: React.FC = () => {
     () => groups.find(group => group.key === selectedGroupKey) || null,
     [groups, selectedGroupKey]
   );
+  const queryText = query.trim();
+  const hasSearchTarget = filteredTabs.length > 0 || (queryText.length > 0 && filteredShortcuts.length > 0);
 
   const activateTab = async (tab: OverviewTab) => {
     if (tab.windowId !== undefined) {
@@ -341,6 +394,65 @@ const NewTab: React.FC = () => {
     });
   };
 
+  const openUrl = async (url: string) => {
+    const navigationUrl = getNavigationUrl(url);
+    if (!navigationUrl) return;
+
+    if (currentTabId !== undefined) {
+      await chrome.tabs.update(currentTabId, { url: navigationUrl });
+    } else {
+      await chrome.tabs.create({ url: navigationUrl });
+    }
+  };
+
+  const openShortcut = async (shortcut: QuickShortcut) => {
+    await openUrl(shortcut.url);
+  };
+
+  const openShortcutEditor = () => {
+    setShortcutDrafts(
+      quickShortcuts.length > 0
+        ? quickShortcuts.map(shortcut => ({ ...shortcut }))
+        : [{ id: makeShortcutId(), title: '', url: '' }]
+    );
+    setShortcutEditorOpen(true);
+  };
+
+  const updateShortcutDraft = (id: string, field: 'title' | 'url', value: string) => {
+    setShortcutDrafts(current => current.map(shortcut =>
+      shortcut.id === id ? { ...shortcut, [field]: value } : shortcut
+    ));
+  };
+
+  const addShortcutDraft = () => {
+    setShortcutDrafts(current => [...current, { id: makeShortcutId(), title: '', url: '' }]);
+  };
+
+  const removeShortcutDraft = (id: string) => {
+    setShortcutDrafts(current => {
+      const next = current.filter(shortcut => shortcut.id !== id);
+      return next.length > 0 ? next : [{ id: makeShortcutId(), title: '', url: '' }];
+    });
+  };
+
+  const saveShortcutDrafts = async () => {
+    const nextShortcuts = shortcutDrafts.flatMap((shortcut): QuickShortcut[] => {
+      const title = shortcut.title.trim();
+      const url = shortcut.url.trim();
+      if (!title || !url) return [];
+
+      return [{
+        id: shortcut.id || makeShortcutId(),
+        title,
+        url,
+      }];
+    });
+
+    await chrome.storage.local.set({ [QUICK_SHORTCUTS_STORAGE_KEY]: nextShortcuts });
+    setQuickShortcuts(nextShortcuts);
+    setShortcutEditorOpen(false);
+  };
+
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const firstTab = filteredTabs[0];
@@ -349,14 +461,13 @@ const NewTab: React.FC = () => {
       return;
     }
 
-    const navigationUrl = getNavigationUrl(query);
-    if (!navigationUrl) return;
-
-    if (currentTabId !== undefined) {
-      chrome.tabs.update(currentTabId, { url: navigationUrl });
-    } else {
-      chrome.tabs.create({ url: navigationUrl });
+    const firstShortcut = queryText.length > 0 ? filteredShortcuts[0] : undefined;
+    if (firstShortcut) {
+      openShortcut(firstShortcut);
+      return;
     }
+
+    openUrl(query);
   };
 
   const runConfirmedAction = async () => {
@@ -388,10 +499,40 @@ const NewTab: React.FC = () => {
           placeholder="Search title, URL, domain, group, or window"
           onChange={event => setQuery(event.target.value)}
         />
-        <button type="submit" disabled={filteredTabs.length === 0 && query.trim().length === 0}>
-          {filteredTabs.length > 0 ? 'Open first match' : 'Search web'}
+        <button type="submit" disabled={!hasSearchTarget && queryText.length === 0}>
+          {hasSearchTarget ? 'Open first match' : 'Search web'}
         </button>
       </form>
+
+      <section className="quick-shortcuts" aria-label="Quick launch shortcuts">
+        <div className="quick-shortcuts-header">
+          <div>
+            <h2>Quick launch</h2>
+            <p>{quickShortcuts.length > 0 ? 'Open a saved destination from this tab.' : 'Add the places you open most often.'}</p>
+          </div>
+          <button type="button" onClick={openShortcutEditor}>
+            {quickShortcuts.length > 0 ? 'Edit shortcuts' : 'Add shortcut'}
+          </button>
+        </div>
+
+        {quickShortcuts.length > 0 && (
+          <div className="quick-shortcut-list">
+            {filteredShortcuts.length > 0 ? (
+              filteredShortcuts.map(shortcut => (
+                <button type="button" className="quick-shortcut" key={shortcut.id} onClick={() => openShortcut(shortcut)}>
+                  <span className="quick-shortcut-icon">{getShortcutFallbackLabel(shortcut)}</span>
+                  <span>
+                    <strong>{shortcut.title}</strong>
+                    <small>{shortcut.url}</small>
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="quick-shortcut-empty">No shortcuts match this search.</p>
+            )}
+          </div>
+        )}
+      </section>
 
       <div className="window-filter" aria-label="Window filter">
         <button
@@ -545,6 +686,59 @@ const NewTab: React.FC = () => {
             <div className="newtab-modal-actions">
               <button type="button" onClick={() => setConfirmAction(null)}>Cancel</button>
               <button type="button" className="danger-button" onClick={runConfirmedAction}>{confirmAction.actionLabel}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shortcutEditorOpen && (
+        <div className="newtab-modal-backdrop" role="presentation">
+          <div className="newtab-modal shortcut-editor-modal" role="dialog" aria-modal="true" aria-labelledby="shortcut-editor-title">
+            <header className="shortcut-editor-header">
+              <div>
+                <h2 id="shortcut-editor-title">Quick launch</h2>
+                <p>Save the destinations you open from a new tab.</p>
+              </div>
+              <button type="button" className="close-detail-button" onClick={() => setShortcutEditorOpen(false)} aria-label="Close shortcut editor">
+                ×
+              </button>
+            </header>
+
+            <div className="shortcut-editor-list">
+              {shortcutDrafts.map((shortcut, index) => (
+                <div className="shortcut-editor-row" key={shortcut.id}>
+                  <label>
+                    Title
+                    <input
+                      type="text"
+                      value={shortcut.title}
+                      placeholder={`Shortcut ${index + 1}`}
+                      onChange={event => updateShortcutDraft(shortcut.id, 'title', event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    URL
+                    <input
+                      type="text"
+                      value={shortcut.url}
+                      placeholder="https://example.com"
+                      onChange={event => updateShortcutDraft(shortcut.id, 'url', event.target.value)}
+                    />
+                  </label>
+                  <button type="button" className="shortcut-remove-button" onClick={() => removeShortcutDraft(shortcut.id)} aria-label={`Remove shortcut ${index + 1}`}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button type="button" className="shortcut-add-button" onClick={addShortcutDraft}>
+              Add another
+            </button>
+
+            <div className="newtab-modal-actions">
+              <button type="button" onClick={() => setShortcutEditorOpen(false)}>Cancel</button>
+              <button type="button" onClick={saveShortcutDrafts}>Save shortcuts</button>
             </div>
           </div>
         </div>
