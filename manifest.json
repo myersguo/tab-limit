@@ -8,7 +8,8 @@
     "tabs",
     "tabGroups",
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms"
   ],
   
   "commands": {
@@ -22,6 +23,10 @@
   
   "background": {
     "service_worker": "src/background.ts"
+  },
+  
+  "chrome_url_overrides": {
+    "newtab": "src/newtab/index.html"
   },
   
   "options_page": "src/options/index.html",

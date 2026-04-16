@@ -6,6 +6,12 @@ let config: Settings = DEFAULT_SETTINGS;
 const loadConfig = async () => {
   const storedSettings = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
   config = { ...DEFAULT_SETTINGS, ...storedSettings };
+  
+  if (config.autoCloseInactivity) {
+    chrome.alarms.create('checkInactivity', { periodInMinutes: 1 });
+  } else {
+    chrome.alarms.clear('checkInactivity');
+  }
 };
 
 // --- Event Listeners ---
@@ -18,6 +24,12 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'sync') {
     loadConfig();
+  }
+});
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'checkInactivity' && config.autoCloseInactivity) {
+    await checkInactiveTabs();
   }
 });
 
@@ -59,6 +71,92 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 });
 
 // --- Core Logic ---
+
+async function checkInactiveTabs() {
+  const allTabs = await chrome.tabs.query({});
+  const now = Date.now();
+  const thresholdMs = config.inactivityThreshold * 1000;
+  
+  const tabsToClose: number[] = [];
+  
+  for (const tab of allTabs) {
+    // Skip active tabs or pinned tabs or audible tabs
+    if (tab.active || tab.pinned || tab.audible || !tab.id) continue;
+    
+    const key = `tab_${tab.id}_lastUsed`;
+    const result = await chrome.storage.local.get(key);
+    const lastUsed = result[key];
+    
+    if (lastUsed && (now - lastUsed > thresholdMs)) {
+      tabsToClose.push(tab.id);
+    }
+  }
+  
+  if (tabsToClose.length > 0) {
+    if (config.autoCloseConfirm) {
+      await chrome.storage.local.set({ tabsToConfirmClose: tabsToClose });
+      
+      const confirmUrl = chrome.runtime.getURL("src/confirm/index.html");
+      
+      // Check if confirm window already exists
+      const existingWindows = await chrome.windows.getAll({ populate: true });
+      let windowExists = false;
+      for (const win of existingWindows) {
+        if (win.tabs && win.tabs.some(t => t.url === confirmUrl)) {
+          windowExists = true;
+          await chrome.windows.update(win.id!, { focused: true });
+          break;
+        }
+      }
+      
+      if (!windowExists) {
+        const popupWidth = 450;
+        const popupHeight = 500;
+        
+        let createData: chrome.windows.CreateData = {
+          url: confirmUrl,
+          type: 'popup',
+          width: popupWidth,
+          height: popupHeight,
+          focused: true
+        };
+
+        try {
+          // In Chrome extensions, the most reliable way to center a popup 
+          // is to get the current window or last focused window
+          const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+          
+          if (windows.length > 0) {
+            // Find the active window or fallback to the first one
+            let baseWindow = windows.find(w => w.focused) || windows[0];
+            
+            if (baseWindow && 
+                baseWindow.left !== undefined && 
+                baseWindow.top !== undefined && 
+                baseWindow.width !== undefined && 
+                baseWindow.height !== undefined) {
+              
+              // Calculate center position relative to the base window
+              // Make sure we parse as integers
+              const left = parseInt(String(Math.max(0, baseWindow.left + (baseWindow.width - popupWidth) / 2)), 10);
+              const top = parseInt(String(Math.max(0, baseWindow.top + (baseWindow.height - popupHeight) / 2)), 10);
+
+              createData.left = left;
+              createData.top = top;
+            }
+          }
+        } catch (e) {
+          // Ignore error, use default positioning
+          console.error("Failed to center window:", e);
+        }
+
+        await chrome.windows.create(createData);
+      }
+    } else {
+      await chrome.tabs.remove(tabsToClose);
+    }
+  }
+}
 
 async function handleDuplicateUrls(windowId: number, currentTab: chrome.tabs.Tab) {
   if (!currentTab.url || !currentTab.id) return;

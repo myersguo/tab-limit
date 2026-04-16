@@ -8,6 +8,9 @@ export interface Settings {
   keepSingleUrl: boolean;
   tabsPerUrl: number;
   keepUrlHash: boolean;
+  autoCloseInactivity: boolean;
+  inactivityThreshold: number;
+  autoCloseConfirm: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -19,4 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   keepSingleUrl: true,
   tabsPerUrl: 2,
   keepUrlHash: true,
+  autoCloseInactivity: false,
+  inactivityThreshold: 3600,
+  autoCloseConfirm: false,
 };

@@ -18,7 +18,7 @@ const Options: React.FC = () => {
       const checked = (e.target as HTMLInputElement).checked;
       setSettings(prev => ({ ...prev, [name]: checked }));
     } else {
-      setSettings(prev => ({ ...prev, [name]: (name === 'maxTabs' || name === 'tabsPerUrl') ? parseInt(value, 10) : value }));
+      setSettings(prev => ({ ...prev, [name]: (name === 'maxTabs' || name === 'tabsPerUrl' || name === 'inactivityThreshold') ? parseInt(value, 10) : value }));
     }
   };
 
@@ -34,6 +34,10 @@ const Options: React.FC = () => {
     }
     if (settings.tabsPerUrl < 1 || settings.tabsPerUrl > 10) {
       showStatus('Tabs per URL must be between 1-10', 'error');
+      return;
+    }
+    if (settings.autoCloseInactivity && settings.inactivityThreshold < 60) {
+      showStatus('Inactivity threshold must be at least 60 seconds', 'error');
       return;
     }
     const finalSettings = {
@@ -123,6 +127,55 @@ const Options: React.FC = () => {
               </label>
               <div className="field-help">
                 When checked, tabs with the same URL but different hashes are considered unique.
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="section">
+        <h2>Auto Close Settings</h2>
+        <div className="field checkbox-field">
+          <label htmlFor="autoCloseInactivity" className="checkbox-label">
+            <input
+              type="checkbox"
+              id="autoCloseInactivity"
+              name="autoCloseInactivity"
+              checked={settings.autoCloseInactivity}
+              onChange={handleInputChange}
+            />
+            <span>Auto close inactive tabs</span>
+          </label>
+          <div className="field-help">
+            When enabled, automatically closes tabs that have not been active for a specified time.
+          </div>
+        </div>
+        {settings.autoCloseInactivity && (
+          <>
+            <div className="field sub-field">
+              <label htmlFor="inactivityThreshold">Inactivity threshold (seconds):</label>
+              <input
+                type="number"
+                id="inactivityThreshold"
+                name="inactivityThreshold"
+                min="60"
+                value={settings.inactivityThreshold}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="field checkbox-field sub-field">
+              <label htmlFor="autoCloseConfirm" className="checkbox-label">
+                <input
+                  type="checkbox"
+                  id="autoCloseConfirm"
+                  name="autoCloseConfirm"
+                  checked={settings.autoCloseConfirm}
+                  onChange={handleInputChange}
+                />
+                <span>Ask for confirmation before closing</span>
+              </label>
+              <div className="field-help">
+                When enabled, a popup will ask for your confirmation before tabs are automatically closed.
               </div>
             </div>
           </>

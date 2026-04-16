@@ -19,6 +19,8 @@ export default defineConfig({
       input: {
         options: resolve(srcDir, 'options', 'index.html'),
         popup: resolve(srcDir, 'popup', 'index.html'),
+        confirm: resolve(srcDir, 'confirm', 'index.html'),
+        newtab: resolve(srcDir, 'newtab', 'index.html'),
       },
     },
   },
