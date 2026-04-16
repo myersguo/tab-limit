@@ -1,9 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Tab Limit",
-  "version": "1.1.2",
+  "version": "1.1.6",
   "description": "This feature allows you to limit the number of tabs that can be open simultaneously",
-  
   "permissions": [
     "tabs",
     "tabGroups",
@@ -11,7 +10,6 @@
     "activeTab",
     "alarms"
   ],
-  
   "commands": {
     "new-tab": {
       "suggested_key": {
@@ -20,21 +18,17 @@
       "description": "create new tab"
     }
   },
-  
   "background": {
     "service_worker": "src/background.ts"
   },
-  
   "chrome_url_overrides": {
     "newtab": "src/newtab/index.html"
   },
-  
   "options_page": "src/options/index.html",
   "action": {
     "default_popup": "src/popup/index.html",
     "default_title": "Tab Limit Settings"
   },
-  
   "icons": {
     "16": "16.png",
     "24": "24.png",
