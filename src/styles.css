@@ -525,7 +525,7 @@ button:hover {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   max-width: 1180px;
-  margin: 0 auto 28px;
+  margin: 0 auto 12px;
   padding: 10px;
   border: 1px solid rgba(23, 32, 28, 0.16);
   border-radius: 8px;
@@ -561,6 +561,37 @@ button:hover {
   cursor: not-allowed;
   background: #dfe5df;
   color: #7a867e;
+}
+
+.window-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 1180px;
+  margin: 0 auto 22px;
+}
+
+.window-filter button {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(23, 32, 28, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #607267;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.window-filter button:hover {
+  background: #edf2ec;
+  color: #17201c;
+  transform: none;
+}
+
+.window-filter button.is-selected {
+  border-color: rgba(23, 32, 28, 0.34);
+  background: #17201c;
+  color: #ffffff;
 }
 
 .domain-grid {
@@ -1050,6 +1081,10 @@ button:hover {
 
   .newtab-search {
     grid-template-columns: 1fr;
+  }
+
+  .window-filter button {
+    flex: 1 1 auto;
   }
 
   .domain-actions,

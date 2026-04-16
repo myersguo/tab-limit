@@ -8,6 +8,7 @@ interface OverviewTab extends chrome.tabs.Tab {
   createdAt: number;
   groupTitle?: string;
   windowFocused?: boolean;
+  windowLabel: string;
 }
 
 interface DomainGroup {
@@ -24,6 +25,15 @@ interface ConfirmAction {
   message: string;
   actionLabel: string;
   run: () => Promise<void>;
+}
+
+type WindowFilter = 'all' | number;
+
+interface WindowOption {
+  id: number;
+  label: string;
+  focused: boolean;
+  tabCount: number;
 }
 
 const specialUrlLabel = (url?: string) => {
@@ -100,6 +110,8 @@ const NewTab: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [currentTabId, setCurrentTabId] = useState<number | undefined>();
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const [selectedWindow, setSelectedWindow] = useState<WindowFilter>('all');
+  const [windowOptions, setWindowOptions] = useState<WindowOption[]>([]);
 
   const loadTabs = async () => {
     setLoading(true);
@@ -113,8 +125,20 @@ const NewTab: React.FC = () => {
     setCurrentTabId(currentTab?.id);
 
     const windowFocus = new Map<number, boolean>();
+    const windowLabels = new Map<number, string>();
     windows.forEach(win => {
       if (win.id !== undefined) windowFocus.set(win.id, Boolean(win.focused));
+    });
+
+    const orderedWindows = [...windows].sort((a, b) => {
+      if (Number(b.focused) !== Number(a.focused)) return Number(b.focused) - Number(a.focused);
+      return (a.id || 0) - (b.id || 0);
+    });
+
+    orderedWindows.forEach((win, index) => {
+      if (win.id !== undefined) {
+        windowLabels.set(win.id, win.focused ? 'Current window' : `Window ${index + 1}`);
+      }
     });
 
     const groupTitles = new Map<number, string>();
@@ -138,9 +162,19 @@ const NewTab: React.FC = () => {
           normalizedUrl: normalizeUrl(tab.url),
           groupTitle: tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE ? groupTitles.get(tab.groupId) : undefined,
           windowFocused: windowFocus.get(tab.windowId),
+          windowLabel: windowLabels.get(tab.windowId) || 'Window',
         };
       });
 
+    setWindowOptions(orderedWindows.flatMap(win => {
+      if (win.id === undefined) return [];
+      return [{
+        id: win.id,
+        label: windowLabels.get(win.id) || 'Window',
+        focused: Boolean(win.focused),
+        tabCount: overviewTabs.filter(tab => tab.windowId === win.id).length,
+      }];
+    }));
     setTabs(overviewTabs);
     setLoading(false);
   };
@@ -166,21 +200,26 @@ const NewTab: React.FC = () => {
     };
   }, []);
 
+  const windowFilteredTabs = useMemo(() => {
+    if (selectedWindow === 'all') return tabs;
+    return tabs.filter(tab => tab.windowId === selectedWindow);
+  }, [selectedWindow, tabs]);
+
   const filteredTabs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return tabs;
+    if (!normalizedQuery) return windowFilteredTabs;
 
-    return tabs.filter(tab => {
+    return windowFilteredTabs.filter(tab => {
       const haystack = [
         tab.title,
         tab.url,
         tab.domainLabel,
         tab.groupTitle,
-        `window ${tab.windowId}`,
+        tab.windowLabel,
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [query, tabs]);
+  }, [query, windowFilteredTabs]);
 
   const groups = useMemo(() => {
     const byDomain = new Map<string, OverviewTab[]>();
@@ -354,6 +393,26 @@ const NewTab: React.FC = () => {
         </button>
       </form>
 
+      <div className="window-filter" aria-label="Window filter">
+        <button
+          type="button"
+          className={selectedWindow === 'all' ? 'is-selected' : ''}
+          onClick={() => setSelectedWindow('all')}
+        >
+          All windows · {tabs.length}
+        </button>
+        {windowOptions.map(option => (
+          <button
+            type="button"
+            key={option.id}
+            className={selectedWindow === option.id ? 'is-selected' : ''}
+            onClick={() => setSelectedWindow(option.id)}
+          >
+            {option.label} · {option.tabCount}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="newtab-empty">Loading tabs...</div>
       ) : groups.length === 0 ? (
@@ -465,6 +524,7 @@ const NewTab: React.FC = () => {
                     {tab.audible && <span>Audio</span>}
                     {tab.active && <span>Active</span>}
                     {tab.windowFocused && <span>Current window</span>}
+                    {!tab.windowFocused && <span>{tab.windowLabel}</span>}
                     <span>{formatRelativeTime(tab.lastUsed)}</span>
                   </span>
                   <button type="button" className="close-tab-button" onClick={() => requestCloseTab(tab)} aria-label={`Close ${tab.title || 'tab'}`}>
