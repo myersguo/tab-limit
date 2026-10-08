@@ -60,6 +60,25 @@ const Options: React.FC = () => {
       <h1>Tab Limit Settings</h1>
 
       <div className="section">
+        <h2>New Tab Settings</h2>
+        <div className="field checkbox-field">
+          <label htmlFor="overrideNewTab" className="checkbox-label">
+            <input
+              type="checkbox"
+              id="overrideNewTab"
+              name="overrideNewTab"
+              checked={settings.overrideNewTab}
+              onChange={handleInputChange}
+            />
+            <span>Use Tab Limit as the new tab page</span>
+          </label>
+          <div className="field-help">
+            When disabled, new tabs use Chrome's default new tab page.
+          </div>
+        </div>
+      </div>
+
+      <div className="section">
         <h2>Basic Settings</h2>
         <div className="field">
           <label htmlFor="maxTabs">Maximum number of tabs:</label>

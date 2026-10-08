@@ -1,5 +1,6 @@
 // Define types for settings
 export interface Settings {
+  overrideNewTab: boolean;
   maxTabs: number;
   exceedBehavior: 'group' | 'prevent';
   groupStrategy: 'creation-asc' | 'creation-desc' | 'recent-asc' | 'recent-desc';
@@ -14,6 +15,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  overrideNewTab: true,
   maxTabs: 20,
   exceedBehavior: 'prevent',
   groupStrategy: 'recent-asc',
